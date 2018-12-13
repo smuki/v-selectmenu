@@ -14,10 +14,10 @@
                 </button>
             </slot>
         </div>
-
         <!-- drop down list -->
         <v-dropdown ref="drop"
                     @show-change="dropdownVisible"
+ 					@contextmenu.prevent="evtClick"
                     :position="position"
                     :embed="embed"
                     :x="x"
@@ -173,6 +173,7 @@
                 type: Number,
                 default: 0
             },
+ 		  
             scroll: {
                 type: Boolean,
                 default: true
@@ -189,6 +190,7 @@
                 results: [],
                 subMenus: [],
                 selected: [],
+				parameter:{},
                 search: '',
                 headerText: '',
                 i18n: lang[this.language],
@@ -213,6 +215,8 @@
         },
         methods: {
             open(){
+            	console.log("------------open------------");
+
                 this.$refs.drop.$emit('show', this.$refs.caller);
                 this.$nextTick(()=>{
                     if(this.show) this.$emit('show');
@@ -252,6 +256,9 @@
                     this.selected.splice(0, this.selected.length);
                     if(!this.multiple) this.close();
                 }
+            },
+            evtClick(e){
+            	return false;
             },
             selectAll(){
                 if(this.results.length && !this.message) {
@@ -302,6 +309,11 @@
                     this.selected = [item];
                     this.close();
                 }
+                let v={};
+                v.selected=this.selected;
+                v.parameter=this.parameter;
+
+                this.$emit('selected', v);
             },
             nextLine(){
                 let that = this;
@@ -388,6 +400,31 @@
                     this.open();
                 }
             },
+            trigger(e){
+                console.log("trigger");
+                console.log("event");
+                console.log(e);
+
+                e.stopPropagation();
+                e.preventDefault();
+                this.parameter=e.parameter;
+                console.log(e.parameter);
+                //this.close();
+                console.log("info");
+                console.log(info);
+
+                let info = this.scrollInfo();
+                this.y = e.pageY || (e.clientY + info.y);
+                this.x = e.pageX || (e.clientX + info.x);
+
+                console.log("x");
+                console.log(this.x);
+
+                console.log("y");
+                console.log(this.y);
+
+                this.open();
+            },            
             scrollInfo(){
                 let supportPageOffset = window.pageXOffset !== undefined;
                 let isCSS1Compat = ((document.compatMode || "") === "CSS1Compat");
@@ -423,7 +460,27 @@
                         }
                     }
                 }
-            }
+            },
+            initData(val){
+				let that = this;
+	            this.checkDataType();
+
+	            if(this.title){
+	                this.headerText = this.title;
+	            }else{
+	                if(this.regular && this.state.group) this.headerText = this.i18n.regular_group;
+	                if(!this.regular) this.headerText = this.i18n.advance_default;
+	            }
+
+	            if(val.length){
+	                if(this.state.group) this.tabIndex = 0;
+	                else this.results = val.concat();
+	            }
+	            if(this.regular) this.menuClass['sm-regular'] = true;
+	            else this.init();
+
+	        	console.log("------------mounted------------");
+            },
         },
         computed: {
             btnText(){
@@ -439,6 +496,9 @@
                 this.tabIndex = val;
                 this.searchList();
             },
+ 			data(val){
+		        this.initData(val);
+            },            
             value(val){
                 this.init();
             },
@@ -449,27 +509,13 @@
             }
         },
         mounted(){
-            let that = this;
-            this.checkDataType();
-
-            if(this.title){
-                this.headerText = this.title;
-            }else{
-                if(this.regular && this.state.group) this.headerText = this.i18n.regular_group;
-                if(!this.regular) this.headerText = this.i18n.advance_default;
-            }
-
-            if(this.data.length){
-                if(this.state.group) this.tabIndex = 0;
-                else this.results = this.data.concat();
-            }
-            if(this.regular) this.menuClass['sm-regular'] = true;
-            else this.init();
-
-            this.$on('clear', this.clear);
+			this.initData(this.data);
+			this.$on('clear', this.clear);
+			this.$on('trigger', this.trigger);
         },
         destroyed(){
             this.$off('clear', this.clear);
+            this.$off('trigger', this.trigger);
         }
     }
 </script>
